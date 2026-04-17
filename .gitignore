@@ -1,0 +1,7 @@
+/.venv/
+/__pycache__/
+/web_app/application/__pycache__/
+/web_app/chat/__pycache__/
+/web_app/config/__pycache__/
+/web_app/domain/__pycache__/
+/web_app/infrastructure/__pycache__/

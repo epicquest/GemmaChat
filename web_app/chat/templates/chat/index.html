@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GemmaChat</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0d0d0d;
+      --surface:      #161616;
+      --surface2:     #1f1f1f;
+      --border:       #2a2a2a;
+      --text:         #e2e2e2;
+      --text-muted:   #777;
+      --user-bg:      #1d4ed8;
+      --user-text:    #fff;
+      --assistant-bg: #1f1f1f;
+      --accent:       #10b981;
+      --danger:       #ef4444;
+      --radius:       12px;
+      --font: "Inter", system-ui, sans-serif;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 10px; }
+
+    .logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #10b981, #1d4ed8);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #fff;
+      flex-shrink: 0;
+    }
+
+    header h1 { font-size: 17px; font-weight: 600; }
+
+    .model-badge {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      color: var(--accent);
+      font-family: monospace;
+    }
+
+    #clear-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    #clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Messages area ───────────────────────────────────── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Scroll-bar */
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .message { display: flex; gap: 10px; max-width: 780px; }
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message.assistant { align-self: flex-start; }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .message.user .avatar    { background: var(--user-bg); color: #fff; }
+    .message.assistant .avatar { background: var(--accent); color: #000; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+      word-break: break-word;
+      max-width: 100%;
+    }
+    .message.user .bubble {
+      background: var(--user-bg);
+      color: var(--user-text);
+      border-bottom-right-radius: 4px;
+    }
+    .message.assistant .bubble {
+      background: var(--assistant-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Markdown resets inside bubble */
+    .bubble p  { margin: 0 0 .5em; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble pre {
+      background: #0a0a0a; border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px; overflow-x: auto;
+      font-size: 13px; margin: .5em 0;
+    }
+    .bubble code { font-family: "Fira Code", monospace; font-size: 13px; }
+    .bubble :not(pre) > code {
+      background: #1a1a1a; padding: 1px 5px; border-radius: 4px;
+    }
+    .bubble ul, .bubble ol { padding-left: 1.4em; }
+    .bubble table {
+      border-collapse: collapse; width: 100%; margin: .5em 0; font-size: 13px;
+    }
+    .bubble th, .bubble td {
+      border: 1px solid var(--border); padding: 5px 10px; text-align: left;
+    }
+    .bubble th { background: var(--surface2); }
+
+    /* Image thumbnail inside user bubble */
+    .bubble img.user-image {
+      max-width: 260px; max-height: 200px;
+      border-radius: 8px; display: block; margin-top: 6px;
+      object-fit: cover; border: 1px solid rgba(255,255,255,.15);
+    }
+
+    /* Typing cursor */
+    .cursor {
+      display: inline-block; width: 8px; height: 14px;
+      background: var(--accent); border-radius: 2px;
+      animation: blink .7s step-end infinite; vertical-align: text-bottom;
+      margin-left: 2px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Empty state */
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      color: var(--text-muted); user-select: none;
+    }
+    .empty-state .big-logo {
+      font-size: 48px; background: linear-gradient(135deg, #10b981, #1d4ed8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Image preview strip ─────────────────────────────── */
+    #image-preview-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px 0;
+    }
+    #image-preview-bar.visible { display: flex; }
+
+    #image-preview-bar img {
+      width: 56px; height: 56px; object-fit: cover;
+      border-radius: 8px; border: 1px solid var(--border);
+    }
+
+    #remove-image-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 50%;
+      width: 22px; height: 22px; font-size: 14px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    #remove-image-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* ── Input area ──────────────────────────────────────── */
+    #input-area {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 12px 16px 16px;
+      flex-shrink: 0;
+    }
+
+    #chat-form { display: flex; align-items: flex-end; gap: 8px; }
+
+    #attach-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 8px;
+      width: 38px; height: 38px; font-size: 16px;
+      cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color .15s, color .15s;
+    }
+    #attach-btn:hover, #attach-btn.has-image {
+      border-color: var(--accent); color: var(--accent);
+    }
+
+    #message-input {
+      flex: 1; resize: none; min-height: 38px; max-height: 140px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      padding: 9px 12px; font-size: 14px; font-family: var(--font);
+      outline: none; line-height: 1.5; overflow-y: auto;
+    }
+    #message-input::placeholder { color: var(--text-muted); }
+    #message-input:focus { border-color: #444; }
+
+    #send-btn {
+      background: var(--accent); border: none; color: #000;
+      border-radius: 8px; width: 38px; height: 38px;
+      font-size: 18px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity .15s;
+    }
+    #send-btn:disabled { opacity: .4; cursor: not-allowed; }
+    #send-btn:not(:disabled):hover { opacity: .85; }
+
+    /* ── Error toast ─────────────────────────────────────── */
+    #error-toast {
+      display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--danger); color: #fff; border-radius: 8px;
+      padding: 8px 16px; font-size: 13px; z-index: 999;
+    }
+    #error-toast.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="logo">G</div>
+    <h1>GemmaChat</h1>
+    <span class="model-badge">gemma4:e2b</span>
+  </div>
+  <button id="clear-btn" title="Clear conversation">Clear</button>
+</header>
+
+<!-- Messages -->
+<div id="messages">
+  {% if not history %}
+  <div class="empty-state" id="empty-state">
+    <div class="big-logo">G</div>
+    <p>Start a conversation with Gemma</p>
+  </div>
+  {% endif %}
+
+  {% for msg in history %}
+  <div class="message {{ msg.role }}">
+    <div class="avatar">{% if msg.role == "user" %}U{% else %}G{% endif %}</div>
+    <div class="bubble{% if msg.role == "assistant" %} md-rendered{% endif %}"
+         {% if msg.role == "assistant" %}data-md="{{ msg.content|escapejs }}"{% endif %}>
+      {{ msg.content|linebreaksbr }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Image preview -->
+<div id="image-preview-bar">
+  <img id="image-preview-img" src="" alt="Preview" />
+  <button id="remove-image-btn" title="Remove image">&times;</button>
+</div>
+
+<!-- Input area -->
+<div id="input-area">
+  <form id="chat-form" autocomplete="off">
+    {% csrf_token %}
+    <input type="file" id="image-input" accept="image/jpeg,image/png,image/gif,image/webp" hidden />
+    <button type="button" id="attach-btn" title="Attach image">📎</button>
+    <textarea
+      id="message-input"
+      placeholder="Message Gemma…"
+      rows="1"
+      aria-label="Message input"
+    ></textarea>
+    <button type="submit" id="send-btn" title="Send" aria-label="Send">&#9650;</button>
+  </form>
+</div>
+
+<!-- Error toast -->
+<div id="error-toast"></div>
+
+<script>
+  "use strict";
+
+  // ── Marked config ──────────────────────────────────────────────────────────
+  marked.setOptions({ breaks: true, gfm: true });
+
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  const messagesEl   = document.getElementById("messages");
+  const form         = document.getElementById("chat-form");
+  const textarea     = document.getElementById("message-input");
+  const sendBtn      = document.getElementById("send-btn");
+  const attachBtn    = document.getElementById("attach-btn");
+  const imageInput   = document.getElementById("image-input");
+  const previewBar   = document.getElementById("image-preview-bar");
+  const previewImg   = document.getElementById("image-preview-img");
+  const removeImgBtn = document.getElementById("remove-image-btn");
+  const clearBtn     = document.getElementById("clear-btn");
+  const errorToast   = document.getElementById("error-toast");
+
+  let selectedImage = null;  // File | null
+  let isStreaming = false;
+
+  // ── Render existing history markdown ──────────────────────────────────────
+  document.querySelectorAll(".md-rendered[data-md]").forEach(el => {
+    el.innerHTML = marked.parse(el.dataset.md);
+  });
+
+  // ── Auto-resize textarea ──────────────────────────────────────────────────
+  textarea.addEventListener("input", () => {
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight, 140) + "px";
+  });
+
+  // Send on Enter (Shift+Enter = new line)
+  textarea.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!isStreaming) form.dispatchEvent(new Event("submit", { cancelable: true }));
+    }
+  });
+
+  // ── Image attach ──────────────────────────────────────────────────────────
+  attachBtn.addEventListener("click", () => imageInput.click());
+
+  imageInput.addEventListener("change", () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    selectedImage = file;
+    previewImg.src = URL.createObjectURL(file);
+    previewBar.classList.add("visible");
+    attachBtn.classList.add("has-image");
+  });
+
+  removeImgBtn.addEventListener("click", clearImage);
+
+  function clearImage() {
+    selectedImage = null;
+    imageInput.value = "";
+    previewImg.src = "";
+    previewBar.classList.remove("visible");
+    attachBtn.classList.remove("has-image");
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function getCsrf() {
+    return document.querySelector("[name=csrfmiddlewaretoken]").value;
+  }
+
+  function showError(msg) {
+    errorToast.textContent = msg;
+    errorToast.classList.add("visible");
+    setTimeout(() => errorToast.classList.remove("visible"), 4000);
+  }
+
+  function removeEmptyState() {
+    const el = document.getElementById("empty-state");
+    if (el) el.remove();
+  }
+
+  function scrollToBottom() {
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
+  }
+
+  function appendMessage(role, content, imageObjectUrl = null) {
+    removeEmptyState();
+    const wrapper = document.createElement("div");
+    wrapper.className = `message ${role}`;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "user" ? "U" : "G";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    if (role === "user") {
+      if (content) {
+        const text = document.createElement("span");
+        text.textContent = content;
+        bubble.appendChild(text);
+      }
+      if (imageObjectUrl) {
+        const img = document.createElement("img");
+        img.src = imageObjectUrl;
+        img.className = "user-image";
+        img.alt = "Attached image";
+        bubble.appendChild(img);
+      }
+    }
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
+    messagesEl.appendChild(wrapper);
+    scrollToBottom();
+    return bubble;
+  }
+
+  function appendAssistantBubble() {
+    removeEmptyState();
+    const wrapper = document.createElement("div");
+    wrapper.className = "message assistant";
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = "G";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+    cursor.id = "typing-cursor";
+    bubble.appendChild(cursor);
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(bubble);
+    messagesEl.appendChild(wrapper);
+    scrollToBottom();
+    return bubble;
+  }
+
+  // ── Form submit ───────────────────────────────────────────────────────────
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (isStreaming) return;
+
+    const text = textarea.value.trim();
+    const image = selectedImage;
+
+    if (!text && !image) return;
+
+    // Snapshot image URL before clearing
+    const imageUrl = image ? URL.createObjectURL(image) : null;
+
+    // Reset input
+    textarea.value = "";
+    textarea.style.height = "auto";
+    clearImage();
+    setStreaming(true);
+
+    // Show user message immediately
+    appendMessage("user", text, imageUrl);
+
+    // Build form data
+    const data = new FormData();
+    data.append("csrfmiddlewaretoken", getCsrf());
+    data.append("message", text);
+    if (image) data.append("image", image);
+
+    // Start streaming
+    const assistantBubble = appendAssistantBubble();
+    let rawText = "";
+
+    try {
+      const resp = await fetch("{% url 'chat:stream' %}", { method: "POST", body: data });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Server error." }));
+        showError(err.error || "Server error.");
+        assistantBubble.parentElement.remove();
+        setStreaming(false);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // last incomplete line stays in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") {
+            finishStream(assistantBubble, rawText);
+            setStreaming(false);
+            return;
+          }
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.error) {
+              showError(parsed.error);
+              finishStream(assistantBubble, rawText || "(error)");
+              setStreaming(false);
+              return;
+            }
+            if (parsed.token) {
+              rawText += parsed.token;
+              renderStreaming(assistantBubble, rawText);
+            }
+          } catch (_) { /* ignore malformed lines */ }
+        }
+      }
+    } catch (err) {
+      showError("Connection error. Is Ollama running?");
+      if (rawText) {
+        finishStream(assistantBubble, rawText);
+      } else {
+        assistantBubble.parentElement.remove();
+      }
+    } finally {
+      setStreaming(false);
+    }
+  });
+
+  function renderStreaming(bubble, text) {
+    const cursor = document.createElement("span");
+    cursor.className = "cursor";
+    // Render markdown with appended zero-width space to avoid trailing artefacts
+    bubble.innerHTML = marked.parse(text);
+    bubble.appendChild(cursor);
+    scrollToBottom();
+  }
+
+  function finishStream(bubble, text) {
+    bubble.innerHTML = marked.parse(text);
+    scrollToBottom();
+  }
+
+  function setStreaming(active) {
+    isStreaming = active;
+    sendBtn.disabled = active;
+    textarea.disabled = active;
+  }
+
+  // ── Clear history ─────────────────────────────────────────────────────────
+  clearBtn.addEventListener("click", async () => {
+    if (!confirm("Clear the entire conversation?")) return;
+    await fetch("{% url 'chat:clear' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": getCsrf() },
+    });
+    // Remove all message elements
+    [...messagesEl.querySelectorAll(".message")].forEach(el => el.remove());
+    // Re-add empty state
+    if (!document.getElementById("empty-state")) {
+      const div = document.createElement("div");
+      div.className = "empty-state";
+      div.id = "empty-state";
+      div.innerHTML = '<div class="big-logo">G</div><p>Start a conversation with Gemma</p>';
+      messagesEl.appendChild(div);
+    }
+  });
+
+  // ── Scroll to bottom on load ──────────────────────────────────────────────
+  scrollToBottom();
+</script>
+</body>
+</html>
