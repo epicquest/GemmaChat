@@ -66,6 +66,7 @@ def stream_chat(request: HttpRequest):
         data, err = _validate_image(image_file)
         if err:
             return JsonResponse({"error": err}, status=400)
+        assert data is not None
         images = [data]
 
     user_message = Message(role="user", content=text, images=images)
@@ -85,9 +86,12 @@ def stream_chat(request: HttpRequest):
         except ollama.ResponseError as exc:
             logger.error("Ollama error: %s", exc)
             yield (f"data: {json.dumps({'error': str(exc)})}\n\n").encode()
+        # pylint: disable-next=broad-exception-caught
         except Exception as exc:  # noqa: BLE001
             logger.error("Unexpected error: %s", exc)
-            yield (f"data: {json.dumps({'error': 'An unexpected error occurred.'})}\n\n").encode()
+            yield (
+                f"data: {json.dumps({'error': 'An unexpected error occurred.'})}\n\n"
+            ).encode()
         finally:
             # Persist the assistant reply after the stream is exhausted.
             if full_response:

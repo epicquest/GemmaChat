@@ -6,7 +6,7 @@ from domain.entities import Message
 from domain.ports import ChatGateway
 
 
-class ChatService:
+class ChatService:  # pylint: disable=too-few-public-methods
     """Application use-case: send a user message and stream the model's reply."""
 
     def __init__(self, gateway: ChatGateway) -> None:

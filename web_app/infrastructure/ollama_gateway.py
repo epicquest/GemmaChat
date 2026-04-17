@@ -11,7 +11,7 @@ from domain.ports import ChatGateway
 MODEL = "gemma4:e2b"
 
 
-class OllamaGateway(ChatGateway):
+class OllamaGateway(ChatGateway):  # pylint: disable=too-few-public-methods
     """Adapter that implements ChatGateway using a local Ollama server."""
 
     def __init__(self, model: str = MODEL) -> None:
